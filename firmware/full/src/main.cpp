@@ -14,6 +14,7 @@
 
 #include <Arduino.h>
 #include <FastLED.h>
+#include <string.h>
 
 // Definiciones de depuración
 #define DEBUG
@@ -30,13 +31,13 @@
 #endif // DEBUG
 
 // Definiciones de pines
-#define PIN_RGB_DATA 6
-#define PIN_BUZZER 8
-#define PIN_SW0 10
-#define PIN_SW1 11
-#define PIN_SW2 12
+#define PIN_RGB_DATA 3
+#define PIN_BUZZER 5
+#define PIN_SW0 7
+#define PIN_SW1 8
+#define PIN_SW2 9
 #define PIN_LED_BUILTIN LED_BUILTIN
-#define PIN_MISC_LED 9
+#define PIN_MISC_LED 6
 
 // Definiciones de botones
 #define BUTTON_P1 PIN_SW0
@@ -50,6 +51,7 @@
 // Definiciones de tiempos
 #define DEBOUNCE_DELAY_MS 50
 #define LONG_PRESS_DELAY_MS 1000
+#define BOTH_PRESS_WINDOW_MS 500 // Ventana de tiempo para detectar ambos botones presionados
 
 // Enumeración de eventos de botones
 enum ButtonEvents
@@ -74,7 +76,7 @@ ButtonEvents processButtons();
 bool showNumber(int number, bool isLeft);
 
 // Muestra un dígito en una posición específica del array de LEDs
-bool showDigit(int digit, int startIdx, CRGB color = CRGB::Red);
+bool showDigit(int digit, int startIdx, CRGB color = CRGB::BlueViolet);
 
 // ------------------------------------------------- Declaraciones de funciones
 
@@ -99,11 +101,24 @@ void setup()
     pinMode(PIN_SW2, INPUT_PULLUP);
 
     // Configuración de otros pines
+    digitalWrite(PIN_MISC_LED, HIGH);
+    digitalWrite(PIN_LED_BUILTIN, LOW);
     pinMode(PIN_BUZZER, OUTPUT);
     pinMode(PIN_MISC_LED, OUTPUT);
     pinMode(PIN_LED_BUILTIN, OUTPUT);
 
+    delay(10);
+
+    CRGB temp[NUM_LEDS];
+    memset(temp, CRGB::Black, sizeof(temp));
+    memcpy(leds, temp, sizeof(leds));
+    FastLED.show();
+    
+    delay(10);
+
     updateDisplays();
+
+    delay(10);
 }
 
 void loop()
@@ -148,10 +163,13 @@ void loop()
 
     if (event)
     {
+        DEBUG_PRINT("Contador P1: ");
+        DEBUG_PRINT(count_p1);
+        DEBUG_PRINT(" | Contador P2: ");
+        DEBUG_PRINTLN(count_p2);
+
         updateDisplays();
     }
-
-    delay(10);
 }
 
 void updateDisplays()
@@ -191,7 +209,11 @@ ButtonEvents processButtons()
         {
             buttonPressed_p1 = false;
             previous_reading_p1 = current_reading_p1;
-            return SHORT_PRESS_P1;
+
+            if (millis() - pressStartTime_p1 < LONG_PRESS_DELAY_MS)
+            {
+                return SHORT_PRESS_P1;
+            }
         }
     }
 
@@ -210,12 +232,17 @@ ButtonEvents processButtons()
         {
             buttonPressed_p2 = false;
             previous_reading_p2 = current_reading_p2;
-            return SHORT_PRESS_P2;
+
+            if (millis() - pressStartTime_p2 < LONG_PRESS_DELAY_MS)
+            {
+                return SHORT_PRESS_P2;
+            }
         }
     }
 
     // Check both buttons long press
     if (buttonPressed_p1 && buttonPressed_p2 &&
+        (abs(pressStartTime_p1 - pressStartTime_p2) < BOTH_PRESS_WINDOW_MS) &&
         (millis() - pressStartTime_p1) > LONG_PRESS_DELAY_MS &&
         (millis() - pressStartTime_p2) > LONG_PRESS_DELAY_MS)
     {
@@ -237,6 +264,9 @@ ButtonEvents processButtons()
         buttonPressed_p2 = false;
         return LONG_PRESS_P2;
     }
+
+    previous_reading_p1 = current_reading_p1;
+    previous_reading_p2 = current_reading_p2;
 
     return NONE;
 }
