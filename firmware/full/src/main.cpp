@@ -52,6 +52,7 @@
 #define DEBOUNCE_DELAY_MS 50
 #define LONG_PRESS_DELAY_MS 1000
 #define BOTH_PRESS_WINDOW_MS 500 // Ventana de tiempo para detectar ambos botones presionados
+#define UPDATE_RATE 100
 
 // Enumeración de eventos de botones
 enum ButtonEvents
@@ -131,6 +132,7 @@ void loop()
         DEBUG_PRINTLN("Pulsación corta en P1");
         count_p1++;
         count_p1 = (count_p1 > 99) ? 99 : count_p1;
+        analogWrite(PIN_BUZZER, 126);
         break;
 
     case LONG_PRESS_P1:
@@ -161,7 +163,7 @@ void loop()
         break;
     }
 
-    if (event)
+    if (event != NONE)
     {
         DEBUG_PRINT("Contador P1: ");
         DEBUG_PRINT(count_p1);
@@ -186,13 +188,16 @@ ButtonEvents processButtons()
     static unsigned long pressStartTime_p2 = 0;
     static bool buttonPressed_p1 = false;
     static bool buttonPressed_p2 = false;
-    static bool reading_p1 = false;
-    static bool reading_p2 = false;
-    static bool previous_reading_p1 = false;
-    static bool previous_reading_p2 = false;
+    static bool reading_p1 = !BUTTON_PRESSED;
+    static bool reading_p2 = !BUTTON_PRESSED;
+    static bool previous_reading_p1 = !BUTTON_PRESSED;
+    static bool previous_reading_p2 = !BUTTON_PRESSED;
 
     bool current_reading_p1 = digitalRead(BUTTON_P1);
     bool current_reading_p2 = digitalRead(BUTTON_P2);
+
+    // sleep interval to allow proper press detection
+    delay(UPDATE_RATE);
 
     // Check P1 short press
     if (current_reading_p1 != previous_reading_p1 && millis() - lastDebounceTime_p1 > DEBOUNCE_DELAY_MS)
@@ -252,14 +257,14 @@ ButtonEvents processButtons()
     }
 
     // Check P1 long press
-    if (buttonPressed_p1 && ((millis() - pressStartTime_p1) > LONG_PRESS_DELAY_MS))
+    if (buttonPressed_p1 && !buttonPressed_p2 && ((millis() - pressStartTime_p1) > LONG_PRESS_DELAY_MS))
     {
         buttonPressed_p1 = false;
         return LONG_PRESS_P1;
     }
 
     // Check P2 long press
-    if (buttonPressed_p2 && ((millis() - pressStartTime_p2) > LONG_PRESS_DELAY_MS))
+    if (buttonPressed_p2 && !buttonPressed_p1 && ((millis() - pressStartTime_p2) > LONG_PRESS_DELAY_MS))
     {
         buttonPressed_p2 = false;
         return LONG_PRESS_P2;
@@ -283,13 +288,13 @@ bool showNumber(int number, bool isLeft)
 
     if (isLeft)
     {
-        showDigit(digit1, 0);  // Mostrar el primer dígito en el primer display del lado izquierdo
-        showDigit(digit2, 14); // Mostrar el segundo dígito en el segundo display del lado izquierdo
+        showDigit(digit1, 0, CRGB::OrangeRed);  // Mostrar el primer dígito en el primer display del lado izquierdo
+        showDigit(digit2, 14, CRGB::OrangeRed); // Mostrar el segundo dígito en el segundo display del lado izquierdo
     }
     else
     {
-        showDigit(digit1, 28); // Mostrar el primer dígito en el primer display del lado derecho
-        showDigit(digit2, 42); // Mostrar el segundo dígito en el segundo display del lado derecho
+        showDigit(digit1, 28, CRGB::BlueViolet); // Mostrar el primer dígito en el primer display del lado derecho
+        showDigit(digit2, 42, CRGB::BlueViolet); // Mostrar el segundo dígito en el segundo display del lado derecho
     }
 
     return true;
