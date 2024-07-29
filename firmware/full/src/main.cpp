@@ -41,6 +41,7 @@
 // Definiciones de botones
 #define BUTTON_P1 PIN_SW0
 #define BUTTON_P2 PIN_SW1
+#define BUTTON_PX PIN_SW2
 #define BUTTON_PRESSED LOW
 
 // Definiciones de LEDs
@@ -50,6 +51,8 @@
 // Definiciones de tiempos
 #define DEBOUNCE_DELAY_MS 50
 #define LONG_PRESS_DELAY_MS 1000
+#define MS_TO_SWITCH_TO_GOALS 7000
+#define MS_TO_SWITCH_TO_TIME 3000
 
 // Enumeración de eventos de botones
 enum ButtonEvents
@@ -59,7 +62,16 @@ enum ButtonEvents
     SHORT_PRESS_P2,
     LONG_PRESS_P1,
     LONG_PRESS_P2,
-    BOTH_LONG_PRESS
+    LONG_PRESS_P1P2,
+    SHORT_PRESS_PX,
+    LONG_PRESS_PX
+};
+
+// Enumeración de pantallas
+enum Screens
+{
+    GOALS,
+    TIME
 };
 
 // Declaraciones de funciones -------------------------------------------------
@@ -76,12 +88,20 @@ bool showNumber(int number, bool isLeft);
 // Muestra un dígito en una posición específica del array de LEDs
 bool showDigit(int digit, int startIdx, CRGB color = CRGB::Red);
 
+// Actualiza el tiempo del cronómetro
+void updateTime();
+
 // ------------------------------------------------- Declaraciones de funciones
 
 // Variables globales
+Screens screen_to_show = GOALS;
 CRGB leds[NUM_LEDS];
 int count_p1 = 0;
 int count_p2 = 0;
+int minutes = 0;
+int seconds = 0;
+bool timerRunning = false;
+unsigned long lastUpdateTime = 0;
 
 void setup()
 {
@@ -136,10 +156,23 @@ void loop()
         count_p2 = (count_p2 < 0) ? 0 : count_p2;
         break;
 
-    case BOTH_LONG_PRESS:
+    case LONG_PRESS_P1P2:
         DEBUG_PRINTLN("Ambos botones presionados por mucho tiempo");
         count_p1 = 0;
         count_p2 = 0;
+        break;
+
+    case SHORT_PRESS_PX:
+        DEBUG_PRINTLN("Pulsación corta en PX");
+        timerRunning = !timerRunning;
+        break;
+
+    case LONG_PRESS_PX:
+        DEBUG_PRINTLN("Pulsación larga en PX");
+        minutes = 0;
+        seconds = 0;
+        timerRunning = false;
+        screen_to_show = GOALS;
         break;
 
     default:
@@ -149,6 +182,26 @@ void loop()
     if (event)
     {
         updateDisplays();
+        lastUpdateTime = millis();
+    }
+
+    if (timerRunning)
+    {
+        updateTime();
+
+        unsigned long currentMillis = millis();
+        if (screen_to_show == GOALS && currentMillis - lastUpdateTime >= MS_TO_SWITCH_TO_GOALS)
+        {
+            screen_to_show = TIME;
+            updateDisplays();
+            lastUpdateTime = currentMillis;
+        }
+        else if (screen_to_show == TIME && currentMillis - lastUpdateTime >= MS_TO_SWITCH_TO_TIME)
+        {
+            screen_to_show = GOALS;
+            updateDisplays();
+            lastUpdateTime = currentMillis;
+        }
     }
 
     delay(10);
@@ -156,25 +209,39 @@ void loop()
 
 void updateDisplays()
 {
-    showNumber(count_p1, true);
-    showNumber(count_p2, false);
+    if (screen_to_show == GOALS)
+    {
+        showNumber(count_p1, true);
+        showNumber(count_p2, false);
+    }
+    else // TIME
+    {
+        showNumber(minutes, true);
+        showNumber(seconds, false);
+    }
 }
 
 ButtonEvents processButtons()
 {
     static unsigned long lastDebounceTime_p1 = 0;
     static unsigned long lastDebounceTime_p2 = 0;
+    static unsigned long lastDebounceTime_px = 0;
     static unsigned long pressStartTime_p1 = 0;
     static unsigned long pressStartTime_p2 = 0;
+    static unsigned long pressStartTime_px = 0;
     static bool buttonPressed_p1 = false;
     static bool buttonPressed_p2 = false;
+    static bool buttonPressed_px = false;
     static bool reading_p1 = false;
     static bool reading_p2 = false;
+    static bool reading_px = false;
     static bool previous_reading_p1 = false;
     static bool previous_reading_p2 = false;
+    static bool previous_reading_px = false;
 
     bool current_reading_p1 = digitalRead(BUTTON_P1);
     bool current_reading_p2 = digitalRead(BUTTON_P2);
+    bool current_reading_px = digitalRead(BUTTON_PX);
 
     // Check P1 short press
     if (current_reading_p1 != previous_reading_p1 && millis() - lastDebounceTime_p1 > DEBOUNCE_DELAY_MS)
@@ -214,6 +281,25 @@ ButtonEvents processButtons()
         }
     }
 
+    // Check PX short press
+    if (current_reading_px != previous_reading_px && millis() - lastDebounceTime_px > DEBOUNCE_DELAY_MS)
+    {
+        lastDebounceTime_px = millis();
+        reading_px = current_reading_px;
+
+        if (reading_px == BUTTON_PRESSED)
+        {
+            pressStartTime_px = millis(); // start counting time
+            buttonPressed_px = true;
+        }
+        else // was short press!
+        {
+            buttonPressed_px = false;
+            previous_reading_px = current_reading_px;
+            return SHORT_PRESS_PX;
+        }
+    }
+
     // Check both buttons long press
     if (buttonPressed_p1 && buttonPressed_p2 &&
         (millis() - pressStartTime_p1) > LONG_PRESS_DELAY_MS &&
@@ -221,7 +307,7 @@ ButtonEvents processButtons()
     {
         buttonPressed_p1 = false;
         buttonPressed_p2 = false;
-        return BOTH_LONG_PRESS;
+        return LONG_PRESS_P1P2;
     }
 
     // Check P1 long press
@@ -236,6 +322,13 @@ ButtonEvents processButtons()
     {
         buttonPressed_p2 = false;
         return LONG_PRESS_P2;
+    }
+
+    // Check PX long press
+    if (buttonPressed_px && ((millis() - pressStartTime_px) > LONG_PRESS_DELAY_MS))
+    {
+        buttonPressed_px = false;
+        return LONG_PRESS_PX;
     }
 
     return NONE;
@@ -305,4 +398,23 @@ bool showDigit(int digit, int startIdx, CRGB color)
     FastLED.show();
 
     return true;
+}
+
+void updateTime()
+{
+    static unsigned long lastTimeUpdate = 0;
+    if (millis() - lastTimeUpdate >= 1000)
+    {
+        lastTimeUpdate = millis();
+        seconds++;
+        if (seconds >= 60)
+        {
+            seconds = 0;
+            minutes++;
+            if (minutes >= 100)
+            {
+                minutes = 0;
+            }
+        }
+    }
 }
