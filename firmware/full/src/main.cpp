@@ -8,7 +8,7 @@
  * Los botones permiten incrementar o decrementar contadores, mientras que los displays muestran los valores actuales.
  * Los LEDs RGB se utilizan para mostrar dígitos en los displays.
  *
- * @author IEEE-ITBA | I+D
+ * @author IEEE-ITBA | I+D | Santi Lopez - Ale Heir - Joaco Torino
  * @date 2024-07
  */
 
@@ -46,7 +46,7 @@
 
 // Definiciones de LEDs
 #define NUM_LEDS 56 // 14 LEDs por dígito, 2 displays por lado, 2 lados
-#define DEFAULT_BRIGTHNESS 50
+#define DEFAULT_BRIGTHNESS 100
 
 // Definiciones de tiempos
 #define DEBOUNCE_DELAY_MS 50
