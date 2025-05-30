@@ -1,24 +1,21 @@
-/* *****************************************************************
-    * FILE INFORMATION *
-   ***************************************************************** */
+/** *************************************************************************************
    
-/// @brief Main firmware file for Asimov Cup DCF project with modular architecture
-/// @author IEEE-ITBA | I+D | S. Lopez, A. Heir, J. Torino, I. Dib, J. Pérez
-/// @date 2025-06
-/// @version 2.0 - Modular Architecture
-/// @copyright Copyright (c) 2024
+    * @file        main.cpp
+    * @brief       Main firmware file for Asimov Cup DCF project with modular architecture
+    * @author      IEEE-ITBA | I+D | S. Lopez, A. Heir, J. Torino, I. Dib, J. Pérez
+    * @date        2025-05-31
+    * @version     2.0
+    * @note        This firmware controls button functionality, 7-segment displays, and 
+                   RGB LEDs using a modular approach with separate managers for different
+                   subsystems. Buttons allow incrementing/decrementing counters, displays
+                   show current values.
 
-/* This firmware controls button functionality, 7-segment displays, and RGB LEDs
-   using a modular approach with separate managers for different subsystems.
-   Buttons allow incrementing/decrementing counters, displays show current values.
-   RGB LEDs are used to display digits on the 7-segment displays.                   */
+    ************************************************************************************* */
 
 
-/* *****************************************************************
-    * FILE CONFIGURATION *
-   ***************************************************************** */
-
-//* NECESSARY LIBRARIES & HEADERS
+/* **************************************************************************************
+    * INCLUDES AND CONFIGURATION *
+   ************************************************************************************** */
 
 #include <Arduino.h>
 #include <FastLED.h>
@@ -44,40 +41,48 @@
 #endif // DEBUG
 
 
-/* *****************************************************************
-    * HARDWARE SETUP *
-   ***************************************************************** */
+/* **************************************************************************************
+    * CONSTANTS AND DEFINITIONS *
+   ************************************************************************************** */
 
-//* PINS, LEDS AND COUNTERS
+//* HARDWARE PIN DEFINITIONS
 
 #define PIN_RGB_DATA 3                 // WS2812B LED strip data pin
 #define PIN_BUZZER 5                   // Buzzer/speaker pin
 #define PIN_SW0 7                      // Player 1 button pin
 #define PIN_SW1 8                      // Player 2 button pin
-#define PIN_SW2 9                      // Reserved button pin
+#define PIN_SW2 9                      // Reserved button pin (unused)
 #define PIN_LED_BUILTIN LED_BUILTIN    // Built-in LED pin
 #define PIN_MISC_LED 6                 // Miscellaneous LED pin
 
-#define DEFAULT_BRIGHTNESS 100         // Default LED brightness
 
-// Player counters
-int count_p1 = 0;
-int count_p2 = 0;
+//* SYSTEM CONFIGURATION
+
+#define DEFAULT_BRIGHTNESS 100         // Default LED brightness level
 
 
-//* CLASS MANAGERS
+/* **************************************************************************************
+    * GLOBAL VARIABLES *
+   ************************************************************************************** */
 
-CRGB leds[NUM_LEDS];
+//* GAME STATE VARIABLES
+
+int count_p1 = 0;                      // Player 1 counter value
+int count_p2 = 0;                      // Player 2 counter value
+
+
+//* SYSTEM MANAGERS
+
+CRGB leds[NUM_LEDS];                   // LED array for displays
 ButtonManager buttonManager(PIN_SW0, PIN_SW1);
 DisplayManager displayManager(leds);
 SoundManager soundManager(PIN_BUZZER);
 
 
-/* *****************************************************************
-    * CORE LOGIC *
-   ***************************************************************** */
+/* **************************************************************************************
+    * CORE SYSTEM FUNCTIONS *
+   ************************************************************************************** */
 
-/// @brief 
 void setup() 
 {
     #ifdef DEBUG
@@ -92,29 +97,28 @@ void setup()
     delay(100);
 }
 
-/// @brief 
 void loop() 
 {
     handleButtonEvents();
-    soundManager.tick();                 // Update sound system
-    delay(10);
+    soundManager.tick();               // Update sound system
+    delay(10);                         // Main loop delay
 }
 
 
-/* *****************************************************************
-    * HARDWARE MANAGEMENT *
-   ***************************************************************** */
+//* HARDWARE MANAGEMENT
 
-/// @brief Initialize all hardware and subsystems
 void initializeHardware() 
 {
+    // Initialize LED strip and display system
     FastLED.addLeds<WS2812B, PIN_RGB_DATA, GRB>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
     displayManager.initialize(DEFAULT_BRIGHTNESS);
+    
+    // Initialize input and sound systems
     buttonManager.initialize();
     soundManager.initialize();
     
     // Configure additional pins
-    pinMode(PIN_SW2, INPUT_PULLUP);      // Reserve button (not used)
+    pinMode(PIN_SW2, INPUT_PULLUP);      // Reserved button (not used)
     pinMode(PIN_MISC_LED, OUTPUT);       // Miscellaneous LED
     pinMode(PIN_LED_BUILTIN, OUTPUT);    // Built-in LED
     
@@ -126,7 +130,8 @@ void initializeHardware()
 }
 
 
-/// @brief Process button events and update counters
+//* EVENT HANDLING
+
 void handleButtonEvents() 
 {
     ButtonEvent event = buttonManager.processButtons();
@@ -189,7 +194,8 @@ void handleButtonEvents()
 }
 
 
-/// @brief Update display with current counter values
+//* DISPLAY MANAGEMENT
+
 void updateDisplays() 
 {
     displayManager.updateDisplays(count_p1, count_p2);

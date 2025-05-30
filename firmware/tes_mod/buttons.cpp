@@ -1,24 +1,26 @@
-/* *****************************************************************
-    * FILE INFORMATION *
-   ***************************************************************** */
+/** *************************************************************************************
    
-/// @brief Button input management system with debouncing and event detection
-/// @author IEEE-ITBA | I+D | S. Lopez, A. Heir, J. Torino, I. Dib, J. Pérez
-/// @copyright Copyright (c) 2024
+    * @file        buttons.cpp
+    * @brief       Implementation of button input management system with debouncing and event detection
+    * @author      IEEE-ITBA | I+D | S. Lopez, A. Heir, J. Torino, I. Dib, J. Pérez
+    * @date        2025-05-31
+    * @version     1.0
+
+    ************************************************************************************* */
 
 
-/* *****************************************************************
-    * FILE CONFIGURATION *
-   ***************************************************************** */
-
-//* NECESSARY LIBRARIES & HEADERS
+/* **************************************************************************************
+    * INCLUDES AND CONFIGURATION *
+   ************************************************************************************** */
 
 #include "buttons.h"
 
 
-/* *****************************************************************
-    * CONSTRUCTOR *
-   ***************************************************************** */
+/* **************************************************************************************
+    * CLASS IMPLEMENTATION *
+   ************************************************************************************** */
+
+//* CONSTRUCTOR AND INITIALIZATION
 
 ButtonManager::ButtonManager(uint8_t pinP1, uint8_t pinP2) 
 {
@@ -34,13 +36,6 @@ ButtonManager::ButtonManager(uint8_t pinP1, uint8_t pinP2)
     resetStates();
 }
 
-
-/* *****************************************************************
-    * CONFIGURATION METHODS *
-   ***************************************************************** */
-
-//* INITIALIZATION
-
 void ButtonManager::initialize() 
 {
     // Configure pins as inputs with pull-up resistors
@@ -51,7 +46,8 @@ void ButtonManager::initialize()
     resetStates();
 }
 
-//* CONFIGURATION MANAGEMENT
+
+//* CONFIGURATION SETUP
 
 void ButtonManager::setConfig(const ButtonConfig& newConfig) 
 {
@@ -67,12 +63,15 @@ ButtonConfig ButtonManager::getConfig() const
     return config;
 }
 
+void ButtonManager::setTimingParameters(uint16_t debounce, uint16_t longPress, uint16_t bothWindow) 
+{
+    config.debounceDelay = debounce;
+    config.longPressDelay = longPress;
+    config.bothPressWindow = bothWindow;
+}
 
-/* *****************************************************************
-    * EVENT PROCESSING METHODS *
-   ***************************************************************** */
 
-//* MAIN BUTTON PROCESSING
+//* EVENT PROCESSING
 
 ButtonEvent ButtonManager::processButtons() 
 {
@@ -120,14 +119,13 @@ ButtonEvent ButtonManager::processButtons()
     return EVENT_NONE;
 }
 
-//* BUTTON STATE QUERY
-
 bool ButtonManager::isButtonPressed(uint8_t player) 
 {
     if (player == 1) 
     {
         return stateP1.isPressed;
-    } 
+    }
+
     else if (player == 2) 
     {
         return stateP2.isPressed;
@@ -137,11 +135,7 @@ bool ButtonManager::isButtonPressed(uint8_t player)
 }
 
 
-/* *****************************************************************
-    * PRIVATE METHODS *
-   ***************************************************************** */
-
-//* INDIVIDUAL BUTTON PROCESSING
+//* BUTTON STATE PROCESSING
 
 bool ButtonManager::processButtonState(uint8_t pin, ButtonState& state) 
 {
@@ -168,6 +162,7 @@ bool ButtonManager::processButtonState(uint8_t pin, ButtonState& state)
             state.pressStartTime = millis();
             state.isPressed = true;
         } 
+
         // Button released
         else 
         {
@@ -181,15 +176,11 @@ bool ButtonManager::processButtonState(uint8_t pin, ButtonState& state)
     return stateChanged;
 }
 
-//* LONG PRESS DETECTION
-
 bool ButtonManager::checkLongPress(const ButtonState& state) 
 {
     return state.isPressed && 
            (millis() - state.pressStartTime) > config.longPressDelay;
 }
-
-//* SIMULTANEOUS PRESS DETECTION
 
 bool ButtonManager::checkBothPress() 
 {
@@ -213,13 +204,6 @@ bool ButtonManager::checkBothPress()
     return p1LongPress && p2LongPress;
 }
 
-
-/* *****************************************************************
-    * UTILITY METHODS *
-   ***************************************************************** */
-
-//* STATE MANAGEMENT
-
 void ButtonManager::resetStates() 
 {
     // Reset player 1 button state
@@ -235,13 +219,4 @@ void ButtonManager::resetStates()
     stateP2.isPressed = false;
     stateP2.lastDebounceTime = 0;
     stateP2.pressStartTime = 0;
-}
-
-//* TIMING CONFIGURATION
-
-void ButtonManager::setTimingParameters(uint16_t debounce, uint16_t longPress, uint16_t bothWindow) 
-{
-    config.debounceDelay = debounce;
-    config.longPressDelay = longPress;
-    config.bothPressWindow = bothWindow;
 }

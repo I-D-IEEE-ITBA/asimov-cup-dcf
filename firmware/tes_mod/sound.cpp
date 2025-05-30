@@ -1,24 +1,25 @@
-/* *****************************************************************
-    * FILE INFORMATION *
-   ***************************************************************** */
+/** *************************************************************************************
    
-/// @brief Sound management system for button feedback and game events
-/// @author IEEE-ITBA | I+D | S. Lopez, A. Heir, J. Torino, I. Dib, J. Pérez
-/// @copyright Copyright (c) 2024
+    * @file        sound.cpp
+    * @brief       Implementation of sound management system for button feedback and 
+                   game events
+    * @author      IEEE-ITBA | I+D | S. Lopez, A. Heir, J. Torino, I. Dib, J. Pérez
+    * @date        2025-05-31
+    * @version     1.0
+
+    ************************************************************************************* */
 
 
-/* *****************************************************************
-    * FILE CONFIGURATION *
-   ***************************************************************** */
-
-//* NECESSARY HEADERS
+/* **************************************************************************************
+    * INCLUDES AND CONFIGURATION *
+   ************************************************************************************** */
 
 #include "sound.h"
 
 
-/* *****************************************************************
-    * SOUND SETUP *
-   ***************************************************************** */
+/* **************************************************************************************
+    * CONSTANTS AND STATIC DATA *
+   ************************************************************************************** */
 
 const CustomSound SoundManager::soundPresets[] = 
 {
@@ -30,6 +31,13 @@ const CustomSound SoundManager::soundPresets[] =
     {180, 300, 0},                              // SOUND_SUCCESS  
     {0, 0, 0}                                   // SOUND_CUSTOM (placeholder)
 };
+
+
+/* **************************************************************************************
+    * CLASS IMPLEMENTATION *
+   ************************************************************************************** */
+
+//* CONSTRUCTOR AND INITIALIZATION
 
 SoundManager::SoundManager(uint8_t buzzerPin) 
 {
@@ -45,8 +53,6 @@ SoundManager::SoundManager(uint8_t buzzerPin)
     currentPWM = 0;
 }
 
-
-/// @brief initialization
 void SoundManager::initialize() 
 {
     // Configure buzzer pin as output
@@ -63,8 +69,8 @@ void SoundManager::initialize()
 }
 
 
-/// @brief 
-/// @param newConfig 
+//* CONFIGURATION SETUP
+
 void SoundManager::setConfig(const SoundConfig& newConfig) 
 {
     config = newConfig;
@@ -85,14 +91,11 @@ SoundConfig SoundManager::getConfig() const
 }
 
 
-/* *****************************************************************
-    * SOUND MANAGEMENT *
-   ***************************************************************** */
+//* SOUND PLAYBACK
 
-/// @brief predefined playback sound
 void SoundManager::playSound(SoundEvent event) 
 {
-    // Check if sound is enabled
+    // Check if sound is enabled and event is valid
     if (!config.soundEnabled || event == SOUND_NONE) 
     {
         return;
@@ -104,15 +107,11 @@ void SoundManager::playSound(SoundEvent event)
         return;
     }
     
-    // Get preset parameters
+    // Get preset parameters and start sound
     const CustomSound& preset = soundPresets[event];
-    
-    // Start sound with preset parameters
     startSound(preset.pwmIntensity, preset.duration);
 }
 
-
-/// @brief custom playback sound
 void SoundManager::playCustomSound(const CustomSound& sound) 
 {
     if (!config.soundEnabled) 
@@ -134,7 +133,7 @@ void SoundManager::playSound(uint16_t pwmIntensity, uint32_t duration)
 }
 
 
-//* SOUND STOP
+//* SOUND CONTROL
 
 void SoundManager::tick() 
 {
@@ -156,35 +155,6 @@ bool SoundManager::isCurrentlyPlaying() const
     return isPlaying;
 }
 
-
-//* VOLUME
-
-void SoundManager::setVolume(uint8_t volume) 
-{
-    // Clamp volume to valid range
-    config.volumeScale = (volume > 100) ? 100 : volume;
-    
-    // If currently playing, update PWM intensity
-    if (isPlaying) 
-    {
-        uint16_t scaledPWM = (currentPWM * config.volumeScale) / 100;
-        analogWrite(config.buzzerPin, scaledPWM);
-    }
-}
-
-void SoundManager::setSoundEnabled(bool enabled) 
-{
-    config.soundEnabled = enabled;
-    
-    // If disabling sound while playing, stop immediately
-    if (!enabled && isPlaying) 
-    {
-        stopSound();
-    }
-}
-
-
-/// @brief sound control
 void SoundManager::startSound(uint16_t pwmIntensity, uint32_t duration) 
 {
     // Stop any currently playing sound
@@ -206,9 +176,20 @@ void SoundManager::startSound(uint16_t pwmIntensity, uint32_t duration)
     analogWrite(config.buzzerPin, scaledPWM);
 }
 
+void SoundManager::setSoundEnabled(bool enabled) 
+{
+    config.soundEnabled = enabled;
+    
+    // If disabling sound while playing, stop immediately
+    if (!enabled && isPlaying) 
+    {
+        stopSound();
+    }
+}
+
 void SoundManager::stopSound() 
 {
-    // Reset state
+    // Reset state variables
     isPlaying = false;
     playStartTime = 0;
     playDuration = 0;
@@ -216,4 +197,20 @@ void SoundManager::stopSound()
     
     // Turn off buzzer
     analogWrite(config.buzzerPin, 0);
+}
+
+
+//* VOLUME SETTINGS
+
+void SoundManager::setVolume(uint8_t volume) 
+{
+    // Clamp volume to valid range
+    config.volumeScale = (volume > 100) ? 100 : volume;
+    
+    // If currently playing, update PWM intensity
+    if (isPlaying) 
+    {
+        uint16_t scaledPWM = (currentPWM * config.volumeScale) / 100;
+        analogWrite(config.buzzerPin, scaledPWM);
+    }
 }
